@@ -1,0 +1,18 @@
+{
+  "mary_123": {
+    "patient_id": "mary_123",
+    "name": "Mary",
+    "gestational_age_weeks": 32,
+    "known_conditions": ["mild_anemia"],
+    "language": "sw",
+    "phone_number": "+254711XXXYYY"
+  },
+  "demo_user": {
+    "patient_id": "demo_user",
+    "name": "Demo User",
+    "gestational_age_weeks": 28,
+    "known_conditions": [],
+    "language": "sw",
+    "phone_number": "+254700000000"
+  }
+}

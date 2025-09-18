@@ -1,0 +1,15 @@
+application:
+  id: sauti-ya-mama
+  name: "Sauti Ya Mama"
+
+agents:
+  - id: sauti-backend
+    name: "Sauti Backend API"
+    orchestration:
+      type: docker
+      image: sauti-backend:latest
+      ports:
+        - 8000
+    env:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}

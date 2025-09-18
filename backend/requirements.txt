@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+elevenlabs
+mistralai
+google-generativeai
+python-dotenv
+requests
+googlemaps
+supabase
+python-jose[cryptography]
+bcrypt

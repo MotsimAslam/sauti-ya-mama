@@ -130,6 +130,70 @@ export default function Home() {
         </div>
       </section>
 
+      // Add this section after Solution Section in index.js
+
+{/* ✅ How It Works Section */}
+<section id="how-it-works" className="py-20 px-6 bg-white">
+  <div className="max-w-6xl mx-auto text-center">
+    <h3 className="text-3xl font-bold text-gray-800 mb-4">How Sauti Ya Mama Works</h3>
+    <p className="text-gray-600 mb-12 max-w-3xl mx-auto">
+      A simple 4-step process that makes life-saving maternal health support 
+      accessible to every mother, even in low-resource settings.
+    </p>
+
+    <div className="grid md:grid-cols-4 gap-8">
+      {/* Step 1 */}
+      <div className="bg-purple-50 rounded-xl shadow-md p-6 relative">
+        <div className="absolute -top-4 -left-4 bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold">
+          1
+        </div>
+        <MicrophoneIcon className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+        <h4 className="text-lg font-bold mb-2">Speak or Type Symptoms</h4>
+        <p className="text-gray-600">
+          Mothers share their symptoms in local languages using voice or text.
+        </p>
+      </div>
+
+      {/* Step 2 */}
+      <div className="bg-purple-50 rounded-xl shadow-md p-6 relative">
+        <div className="absolute -top-4 -left-4 bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold">
+          2
+        </div>
+        <CpuChipIcon className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+        <h4 className="text-lg font-bold mb-2">AI Health Analysis</h4>
+        <p className="text-gray-600">
+          Multi-agent AI checks risks and triages pregnancy complications instantly.
+        </p>
+      </div>
+
+      {/* Step 3 */}
+      <div className="bg-purple-50 rounded-xl shadow-md p-6 relative">
+        <div className="absolute -top-4 -left-4 bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold">
+          3
+        </div>
+        <MapPinIcon className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+        <h4 className="text-lg font-bold mb-2">Find Nearby Clinics</h4>
+        <p className="text-gray-600">
+          The system recommends the closest safe healthcare facility with directions.
+        </p>
+      </div>
+
+      {/* Step 4 */}
+      <div className="bg-purple-50 rounded-xl shadow-md p-6 relative">
+        <div className="absolute -top-4 -left-4 bg-purple-600 text-white w-10 h-10 flex items-center justify-center rounded-full font-bold">
+          4
+        </div>
+        <CalendarIcon className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+        <h4 className="text-lg font-bold mb-2">Book Appointment (Coming Soon)</h4>
+        <p className="text-gray-600">
+          Mothers will soon be able to book appointments directly with partnered hospitals.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
       {/* ✅ Impact Section */}
       <section id="impact" className="py-16 bg-gray-100 text-center">
         <h3 className="text-3xl font-bold text-gray-800 mb-6">Our Impact</h3>

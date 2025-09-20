@@ -19,7 +19,7 @@ app = FastAPI(
 # ✅ CORS settings for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://sauti-ya-mama-peu3.vercel.app/"],  # change to your Vercel domain for security
+    allow_origins=["http://localhost:3000", "https://sauti-ya-mama-peu3.vercel.app"],  # Add localhost for development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -121,8 +121,9 @@ def geocode_address(address: str):
 # 📌 Chat APIs
 # -------------------------------
 @app.post("/api/chat/initialize")
-def init_chat_session(patient_id: str):
+def init_chat_session(request: dict):
     try:
+        patient_id = request.get('patient_id', 'demo_user')
         return initialize_chat(patient_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

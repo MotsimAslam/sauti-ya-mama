@@ -15,31 +15,22 @@ export default function ChatInterface({ patientId }) {
 
   const initializeChatSession = async () => {
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/initialize`,
-        null,
-        {
-          params: {
-            patient_id: patientId || 'demo_user',
-          },
-        }
-      );
-
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/initialize`, {
+        patient_id: patientId || 'demo_user'
+      });
       setSessionId(response.data.session_id);
-      setMessages([
-        {
-          role: 'assistant',
-          content: "Hello! I'm your maternal health assistant. How can I help you today?",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setMessages([{
+        role: 'assistant',
+        content: 'Hello! I\'m your maternal health assistant. How can I help you today?',
+        timestamp: new Date().toISOString()
+      }]);
     } catch (error) {
       console.error('Error initializing chat:', error);
     }
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -52,43 +43,34 @@ export default function ChatInterface({ patientId }) {
     const userMessage = {
       role: 'user',
       content: inputMessage,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/message`,
-        {
-          session_id: sessionId,
-          patient_id: patientId || 'demo_user',
-          message: inputMessage,
-        }
-      );
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`, {
+        session_id: sessionId,
+        patient_id: patientId || 'demo_user',
+        message: inputMessage
+      });
 
       if (response.data.reply) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: response.data.reply,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: response.data.reply,
+          timestamp: response.data.timestamp || new Date().toISOString()
+        }]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date().toISOString()
+      }]);
     } finally {
       setLoading(false);
     }
@@ -106,9 +88,7 @@ export default function ChatInterface({ patientId }) {
       {/* Chat Header */}
       <div className="p-4 border-b bg-pink-50 rounded-t-lg">
         <h3 className="text-lg font-semibold text-gray-800">Maternal Health Assistant</h3>
-        <p className="text-sm text-gray-600">
-          Ask me anything about pregnancy and maternal health
-        </p>
+        <p className="text-sm text-gray-600">Ask me anything about pregnancy and maternal health</p>
       </div>
 
       {/* Messages Container */}
@@ -151,14 +131,8 @@ export default function ChatInterface({ patientId }) {
               </div>
               <div className="flex space-x-1 mt-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '0.2s' }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style={{ animationDelay: '0.4s' }}
-                ></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
               </div>
             </div>
           </div>

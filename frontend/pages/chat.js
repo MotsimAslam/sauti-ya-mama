@@ -6,35 +6,60 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    // Add user message
     const newMessages = [...messages, { sender: "user", text: input }];
     setMessages(newMessages);
     setInput("");
     setLoading(true);
 
     try {
-      // Call backend API (update if your endpoint differs)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat/message`, {
+      // Build request body
+      const body = {
+        message: input,
+        session_id: sessionId,  // null for first message
+        patient_id: 'demo_user', // Add patient_id
+        // latitude and longitude can be added here if available
+      };
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+        body: JSON.stringify(body),
       });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text}`);
+      }
 
       const data = await response.json();
 
+      // Update session ID
+      if (!sessionId && data.session_id) setSessionId(data.session_id);
+
+      // Add AI reply
       setMessages((prev) => [
         ...prev,
         { sender: "ai", text: data.reply || "⚠️ No response from AI." },
       ]);
+
+      // Show nearby hospitals if available
+      if (data.hospitals) {
+        const hospitalText = data.hospitals.map((h) => h.name).join(", ");
+        setMessages((prev) => [
+          ...prev,
+          { sender: "ai", text: `Nearby hospitals: ${hospitalText}` },
+        ]);
+      }
     } catch (error) {
-      console.error("Chat error:", error);
+      console.error("Chat API error:", error);
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: "⚠️ Failed to reach AI server." },
+        { sender: "ai", text: "⚠️ Failed to reach AI server. Please try again." },
       ]);
     } finally {
       setLoading(false);

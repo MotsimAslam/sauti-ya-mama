@@ -18,7 +18,7 @@ export default function ChatPage() {
 
     try {
       // Call backend API (update if your endpoint differs)
-      const response = await fetch("http://localhost:8000/chat", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),

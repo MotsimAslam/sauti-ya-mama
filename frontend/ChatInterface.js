@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, User, Bot } from "lucide-react";
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://sauti-ya-mama.onrender.com";
 
 export default function ChatInterface({ patientId = "anonymous" }) {
   const [messages, setMessages] = useState([]);

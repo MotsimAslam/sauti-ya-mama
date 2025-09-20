@@ -11,7 +11,7 @@ export default function LocationFinder() {
   const fetchNearbyClinics = async (lat, lng) => {
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:8000/api/nearby-clinics', {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/nearby-clinics`, {
         latitude: lat,
         longitude: lng,
         radius: 20000

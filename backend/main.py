@@ -1,16 +1,14 @@
 # backend/main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.orchestrator_agent import Orchestrator
 from services.google_maps import google_maps_service
-from agents.chat_agent import initialize_chat, chat_with_agent, get_session_history, update_session_context
+from agents.chat_agent import initialize_chat, chat_with_agent
 from typing import Optional
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-import base64
-import traceback
 
 load_dotenv()
 
@@ -20,20 +18,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# ✅ CORS settings for frontend - exact Vercel domain included
+# ✅ Debug: Allow all CORS origins (to test)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://sauti-ya-mama-peu3.vercel.app"
-    ],
+    allow_origins=["*"],  # 🔥 allow everything (temporary for debugging)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -------------------------------
-# Models
+# 📌 Models
 # -------------------------------
 class SymptomRequest(BaseModel):
     patient_id: str
@@ -51,15 +46,31 @@ class ChatRequest(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+
 # -------------------------------
-# Root endpoint
+# 📌 Root endpoint
 # -------------------------------
 @app.get("/")
 def read_root():
     return {"message": "Sauti Ya Mama API is running!"}
 
+
 # -------------------------------
-# Symptom analysis (keeps your orchestrator usage)
+# 📌 Middleware for logging
+# -------------------------------
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"➡️ Incoming request: {request.method} {request.url}")
+    body = await request.body()
+    if body:
+        print(f"📦 Body: {body.decode('utf-8')}")
+    response = await call_next(request)
+    print(f"⬅️ Response status: {response.status_code}")
+    return response
+
+
+# -------------------------------
+# 📌 Symptom analysis
 # -------------------------------
 @app.post("/api/analyze-symptoms")
 def analyze_symptoms(request: SymptomRequest):
@@ -69,41 +80,39 @@ def analyze_symptoms(request: SymptomRequest):
 
         # Encode audio alert if present
         if 'audio_alert' in result:
+            import base64
             result['audio_alert'] = base64.b64encode(result['audio_alert']).decode('utf-8')
 
         return result
     except Exception as e:
-        print("analyze_symptoms error:", e)
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # -------------------------------
-# Patient history
+# 📌 Patient history
 # -------------------------------
 @app.get("/api/patient/{patient_id}")
 def get_patient(patient_id: str):
     from agents.triage_agent import get_patient_history
     return get_patient_history(patient_id)
 
+
 # -------------------------------
-# Nearby clinics (direct call)
+# 📌 Nearby clinics
 # -------------------------------
 @app.post("/api/nearby-clinics")
 def get_nearby_clinics(request: ClinicRequest):
     try:
         hospitals = google_maps_service.find_nearby_hospitals(
-            request.latitude,
-            request.longitude,
-            request.radius
+            request.latitude, request.longitude, request.radius
         )
         return {"clinics": hospitals}
     except Exception as e:
-        print("get_nearby_clinics error:", e)
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Error fetching clinics: {str(e)}")
 
+
 # -------------------------------
-# Geocoding
+# 📌 Geocoding
 # -------------------------------
 @app.get("/api/geocode/{address}")
 def geocode_address(address: str):
@@ -118,12 +127,11 @@ def geocode_address(address: str):
             }
         return {"error": "Address not found"}
     except Exception as e:
-        print("geocode error:", e)
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # -------------------------------
-# Chat APIs (init + message)
+# 📌 Chat APIs
 # -------------------------------
 @app.post("/api/chat/initialize")
 def init_chat_session(request: dict):
@@ -131,9 +139,8 @@ def init_chat_session(request: dict):
         patient_id = request.get('patient_id', 'demo_user')
         return initialize_chat(patient_id)
     except Exception as e:
-        print("init_chat_session error:", e)
-        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/chat/message")
 def handle_chat_message(request: ChatRequest):
@@ -143,38 +150,17 @@ def handle_chat_message(request: ChatRequest):
             session_info = initialize_chat(request.patient_id)
             request.session_id = session_info['session_id']
 
-        # Save location in session context if provided
-        if request.latitude is not None and request.longitude is not None:
-            try:
-                update_session_context(request.session_id, {"location": {"lat": request.latitude, "lng": request.longitude}})
-            except Exception:
-                # not fatal
-                pass
-
-        # Call chat agent (signature unchanged)
+        # Call chat agent
         ai_reply = chat_with_agent(request.session_id, request.message)
 
-        # Check if user asks for hospitals/clinics
+        # ✅ Check if user asks for hospitals/clinics
         keywords = ["hospital", "clinic", "doctor", "near me", "nearby"]
         hospitals = None
         if any(word in request.message.lower() for word in keywords):
-            # prefer session stored location
-            loc = None
-            try:
-                sess = get_session_history(request.session_id)
-                loc = sess.get("context", {}).get("location")
-            except Exception:
-                loc = None
-
-            # fallback to request-provided coords
-            if not loc and request.latitude is not None and request.longitude is not None:
-                loc = {"lat": request.latitude, "lng": request.longitude}
-
-            if loc and google_maps_service:
-                try:
-                    hospitals = google_maps_service.find_nearby_hospitals(loc["lat"], loc["lng"], radius=5000)
-                except Exception as e:
-                    print("hospital lookup error:", e)
+            if request.latitude and request.longitude:
+                hospitals = google_maps_service.find_nearby_hospitals(
+                    request.latitude, request.longitude, radius=5000
+                )
 
         return {
             "reply": ai_reply,
@@ -183,12 +169,12 @@ def handle_chat_message(request: ChatRequest):
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        print("Error in chat message handler:", e)
-        print(traceback.format_exc())
+        print(f"Error in chat message handler: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
+
 # -------------------------------
-# Run app
+# 📌 Run app
 # -------------------------------
 if __name__ == "__main__":
     import uvicorn

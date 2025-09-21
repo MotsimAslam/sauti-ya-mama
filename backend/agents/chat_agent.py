@@ -1,9 +1,10 @@
 import uuid
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import requests
 from dotenv import load_dotenv
+from services.google_maps import google_maps_service  # ✅ hospital lookup
 
 # -------------------------------
 # Load API Keys
@@ -31,7 +32,7 @@ def call_mistral(messages: list) -> str:
     url = "https://api.mistral.ai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}"}
     payload = {
-        "model": "mistral-medium",  # change if you use another Mistral model
+        "model": "mistral-medium",  # change model if needed
         "messages": messages,
         "temperature": 0.7,
     }
@@ -85,12 +86,17 @@ def initialize_chat(patient_id: str) -> Dict[str, Any]:
 # -------------------------------
 # Chat With Agent
 # -------------------------------
-def chat_with_agent(session_id: str, message: str) -> str:
+def chat_with_agent(
+    session_id: str,
+    message: str,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
+) -> Dict[str, Any]:
     """
-    Process a chat message and return Mistral-generated response.
+    Process a chat message, optionally enrich with hospitals, and return Mistral-generated response.
     """
     if session_id not in chat_sessions:
-        return "❌ Session not found. Please start a new chat."
+        return {"reply": "❌ Session not found. Please start a new chat."}
 
     session = chat_sessions[session_id]
 
@@ -102,7 +108,25 @@ def chat_with_agent(session_id: str, message: str) -> str:
     }
     session["messages"].append(user_message)
 
-    # Prepare history (only role + content for LLM)
+    # ✅ Detect if hospital/clinic request
+    hospitals = None
+    keywords = ["hospital", "clinic", "doctor", "near me", "nearby"]
+    if any(word in message.lower() for word in keywords):
+        if latitude and longitude:
+            hospitals_data = google_maps_service.find_nearby_hospitals(latitude, longitude, radius=5000)
+            hospitals = hospitals_data.get("hospitals", [])
+            ai_summary = hospitals_data.get("ai_summary", "Nearby hospitals found, but no summary available.")
+
+            # Inject hospital summary into the conversation so Mistral can use it
+            session["messages"].append(
+                {"role": "system", "content": f"Nearby hospital info: {ai_summary}"}
+            )
+        else:
+            session["messages"].append(
+                {"role": "system", "content": "User requested hospitals but location was not provided."}
+            )
+
+    # Prepare history for Mistral
     history = [
         {"role": msg["role"], "content": msg["content"]}
         for msg in session["messages"]
@@ -112,7 +136,7 @@ def chat_with_agent(session_id: str, message: str) -> str:
     # Call Mistral API
     ai_response = call_mistral(history)
 
-    # Add assistant reply
+    # Save AI reply
     ai_message = {
         "role": "assistant",
         "content": ai_response,
@@ -120,7 +144,12 @@ def chat_with_agent(session_id: str, message: str) -> str:
     }
     session["messages"].append(ai_message)
 
-    return ai_response
+    return {
+        "reply": ai_response,
+        "session_id": session_id,
+        "hospitals": hospitals,
+        "timestamp": datetime.now().isoformat(),
+    }
 
 
 # -------------------------------

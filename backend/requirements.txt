@@ -10,3 +10,4 @@ googlemaps
 supabase  # Optional - will work without it
 python-jose[cryptography]
 bcrypt
+openai>=1.0.0

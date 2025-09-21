@@ -1,134 +1,133 @@
-import { useState } from "react";
+// pages/chat.js
+import { useState, useEffect } from "react";
 
-export default function ChatPage() {
-  const [messages, setMessages] = useState([
-    { sender: "ai", text: "Hello! 👋 I'm your maternal health assistant. How can I help you today?" },
-  ]);
+export default function Chat() {
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [patientId] = useState("demo_user");
+  const [location, setLocation] = useState({ lat: null, lng: null });
 
+  // -------------------------------
+  // ✅ Get user geolocation
+  // -------------------------------
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (err) => {
+          console.warn("⚠️ Location access denied:", err);
+        }
+      );
+    }
+  }, []);
+
+  // -------------------------------
+  // ✅ Initialize chat session
+  // -------------------------------
+  useEffect(() => {
+    const initChat = async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/initialize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: patientId }),
+      });
+      const data = await res.json();
+      setSessionId(data.session_id);
+    };
+    initChat();
+  }, [patientId]);
+
+  // -------------------------------
+  // ✅ Send user message
+  // -------------------------------
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const newMessages = [...messages, { sender: "user", text: input }];
+    // Add user message to chat UI
+    const newMessages = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
-    setLoading(true);
 
     try {
-      // Build request body
-      const body = {
-        message: input,
-        session_id: sessionId,  // null for first message
-        patient_id: 'demo_user', // Add patient_id
-        // latitude and longitude can be added here if available
-      };
-
-      console.log('Sending chat request:', body);
-      console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000');
-
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      console.log('Using backend URL:', backendUrl);
-      
-      const response = await fetch(`${backendUrl}/api/chat/message`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          session_id: sessionId,
+          patient_id: patientId,
+          message: input,
+          latitude: location.lat,
+          longitude: location.lng,
+        }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
 
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('API Error:', text);
-        throw new Error(`HTTP ${response.status}: ${text}`);
-      }
+      const data = await res.json();
 
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      // Update session ID
-      if (!sessionId && data.session_id) setSessionId(data.session_id);
-
-      // Add AI reply
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: data.reply || "⚠️ No response from AI." },
+        { role: "assistant", content: data.reply },
       ]);
-
-      // Show nearby hospitals if available
-      if (data.hospitals) {
-        const hospitalText = data.hospitals.map((h) => h.name).join(", ");
-        setMessages((prev) => [
-          ...prev,
-          { sender: "ai", text: `Nearby hospitals: ${hospitalText}` },
-        ]);
-      }
-    } catch (error) {
-      console.error("Chat API error:", error);
+    } catch (err) {
+      console.error("Chat error:", err);
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: `⚠️ Error: ${error.message}. Please check your connection and try again.` },
+        { role: "assistant", content: "⚠️ Error: Failed to fetch reply." },
       ]);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <main className="flex flex-col h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-purple-600 text-white py-4 px-6 shadow">
-        <h1 className="text-lg font-bold">AI Chat Assistant</h1>
-      </header>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
+      <div className="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-6">
+        <h1 className="text-xl font-bold text-pink-600 mb-4">Sauti Ya Mama Chat</h1>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {/* Messages */}
+        <div className="h-96 overflow-y-auto border p-4 rounded-lg mb-4">
+          {messages.map((msg, idx) => (
             <div
-              className={`max-w-xs md:max-w-md px-4 py-2 rounded-xl shadow ${
-                msg.sender === "user"
-                  ? "bg-purple-600 text-white rounded-br-none"
-                  : "bg-white text-gray-800 rounded-bl-none"
+              key={idx}
+              className={`mb-3 ${
+                msg.role === "user" ? "text-right" : "text-left"
               }`}
             >
-              {msg.text}
+              <span
+                className={`inline-block px-4 py-2 rounded-lg ${
+                  msg.role === "user"
+                    ? "bg-pink-600 text-white"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
+                {msg.content}
+              </span>
             </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-white text-gray-500 px-4 py-2 rounded-xl shadow animate-pulse">
-              Thinking...
-            </div>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
 
-      {/* Input Bar */}
-      <div className="border-t p-4 bg-white flex items-center">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          placeholder="Type your message..."
-          className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-        <button
-          onClick={sendMessage}
-          disabled={loading}
-          className="ml-3 bg-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
-        >
-          Send
-        </button>
+        {/* Input */}
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 border rounded-lg px-4 py-2 focus:outline-pink-600"
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700"
+          >
+            Send
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

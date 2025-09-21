@@ -1,185 +1,165 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from agents.orchestrator_agent import Orchestrator
-from services.google_maps import get_google_maps_service
-from agents.chat_agent import initialize_chat, chat_with_agent
-from typing import Optional
+import uvicorn
 import os
 from dotenv import load_dotenv
-from datetime import datetime
-import base64
+import requests
 
 # -------------------------------
-# Load Environment Variables
+# Load API keys
 # -------------------------------
 load_dotenv()
-
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-CORAL_API_KEY = os.getenv("CORAL_API_KEY")
-AI_ML_API_KEY = os.getenv("AI_ML_API_KEY")
+AI_ML_API_KEY = os.getenv("AI_ML_API_KEY", "9d0da856e8cc438c95e659b35e76a378")
+
+if not MISTRAL_API_KEY and not AI_ML_API_KEY:
+    raise RuntimeError("❌ Missing MISTRAL_API_KEY or AI_ML_API_KEY in environment variables.")
 
 # -------------------------------
-# FastAPI app config
+# Internal services
 # -------------------------------
-app = FastAPI(
-    title="Sauti Ya Mama API",
-    description="Backend for Maternal Health Agent powered by Mistral + Coral + AI/ML APIs",
-    version="2.0.0"
+from services.chat_agent import (
+    initialize_chat,
+    chat_with_agent,
+    get_session_history,
+    update_session_context,
 )
+from services.google_maps import google_maps_service
 
-# ✅ CORS settings for frontend
+
+# -------------------------------
+# FastAPI Setup
+# -------------------------------
+app = FastAPI(title="Sauti Ya Mama - Backend")
+
+# Allow frontend domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "https://sauti-ya-mama-peu3.vercel.app",
-        "https://*.vercel.app"  # Allow all Vercel preview deployments
+        "https://*.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------------
-# 📌 Models
-# -------------------------------
-class SymptomRequest(BaseModel):
-    patient_id: str
-    symptom_text: str
 
-class ClinicRequest(BaseModel):
-    latitude: float
-    longitude: float
-    radius: int = 10000
-
-class ChatRequest(BaseModel):
-    session_id: Optional[str] = None
+# -------------------------------
+# Request Models
+# -------------------------------
+class InitChatRequest(BaseModel):
     patient_id: str
+
+
+class ChatMessageRequest(BaseModel):
+    session_id: str
     message: str
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+
+
+class ContextUpdateRequest(BaseModel):
+    session_id: str
+    context_updates: dict
+
+
+class AnalyzeSymptomsRequest(BaseModel):
+    symptoms: str
+    patient_age: int
+    patient_history: str
+
 
 # -------------------------------
-# 📌 Root endpoint
+# AI Utility: Call Mistral + Fallback AI/ML
+# -------------------------------
+def call_ai(messages: list, model: str = "mistral-medium") -> str:
+    """Primary: Mistral, Fallback: AI/ML API"""
+    if MISTRAL_API_KEY:
+        try:
+            url = "https://api.mistral.ai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}"}
+            payload = {"model": model, "messages": messages, "temperature": 0.7}
+            resp = requests.post(url, headers=headers, json=payload, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"⚠️ Mistral failed: {e}, falling back to AI/ML API")
+
+    # fallback: AI/ML API
+    try:
+        url = "https://api.aimlapi.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {AI_ML_API_KEY}"}
+        payload = {"model": "gpt-4o-mini", "messages": messages, "temperature": 0.7}
+        resp = requests.post(url, headers=headers, json=payload, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+    except Exception as e:
+        print(f"❌ AI/ML API failed: {e}")
+        return "Sorry, I’m unable to process your request at the moment."
+
+
+# -------------------------------
+# Routes
 # -------------------------------
 @app.get("/")
-def read_root():
-    return {"message": "Sauti Ya Mama API is running with Mistral + Coral + AI/ML integrations!"}
+async def root():
+    return {"message": "Welcome to Sauti Ya Mama Backend API"}
 
-# -------------------------------
-# 📌 Symptom analysis
-# -------------------------------
-@app.post("/api/analyze-symptoms")
-def analyze_symptoms(request: SymptomRequest):
-    try:
-        orchestrator = Orchestrator()
-        result = orchestrator.handle_user_input(request.patient_id, request.symptom_text)
 
-        # Encode audio alert if present
-        if "audio_alert" in result:
-            result["audio_alert"] = base64.b64encode(result["audio_alert"]).decode("utf-8")
+@app.post("/api/init-chat")
+async def init_chat(req: InitChatRequest):
+    return initialize_chat(req.patient_id)
 
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# -------------------------------
-# 📌 Patient history
-# -------------------------------
-@app.get("/api/patient/{patient_id}")
-def get_patient(patient_id: str):
-    from agents.triage_agent import get_patient_history
-    return get_patient_history(patient_id)
-
-# -------------------------------
-# 📌 Nearby clinics (direct call)
-# -------------------------------
-@app.post("/api/nearby-clinics")
-def get_nearby_clinics(request: ClinicRequest):
-    try:
-        google_maps_service = get_google_maps_service()
-        hospitals = google_maps_service.find_nearby_hospitals(
-            request.latitude,
-            request.longitude,
-            request.radius
-        )
-        return {"clinics": hospitals}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching clinics: {str(e)}")
-
-# -------------------------------
-# 📌 Geocoding
-# -------------------------------
-@app.get("/api/geocode/{address}")
-def geocode_address(address: str):
-    try:
-        google_maps_service = get_google_maps_service()
-        geocode_result = google_maps_service.client.geocode(address)
-        if geocode_result:
-            location = geocode_result[0]["geometry"]["location"]
-            return {
-                "latitude": location["lat"],
-                "longitude": location["lng"],
-                "formatted_address": geocode_result[0]["formatted_address"]
-            }
-        return {"error": "Address not found"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# -------------------------------
-# 📌 Chat APIs
-# -------------------------------
-@app.post("/api/chat/initialize")
-def init_chat_session(request: dict):
-    try:
-        patient_id = request.get("patient_id", "demo_user")
-        return initialize_chat(patient_id)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/chat/message")
-def handle_chat_message(request: ChatRequest):
-    try:
-        # Create session if not provided
-        if not request.session_id:
-            session_info = initialize_chat(request.patient_id)
-            request.session_id = session_info["session_id"]
+async def chat_message(req: ChatMessageRequest):
+    reply = chat_with_agent(req.session_id, req.message)
+    return {"reply": reply}
 
-        # Call chat agent (Mistral)
-        ai_reply = chat_with_agent(request.session_id, request.message)
 
-        # ✅ Check if user asks for hospitals/clinics
-        keywords = ["hospital", "clinic", "doctor", "near me", "nearby"]
-        hospitals = None
-        if any(word in request.message.lower() for word in keywords):
-            if request.latitude and request.longitude:
-                google_maps_service = get_google_maps_service()
-                hospitals = google_maps_service.find_nearby_hospitals(
-                    request.latitude,
-                    request.longitude,
-                    radius=5000
-                )
+@app.get("/api/chat/history/{session_id}")
+async def chat_history(session_id: str):
+    return get_session_history(session_id)
 
-        return {
-            "reply": ai_reply,
-            "session_id": request.session_id,
-            "hospitals": hospitals,
-            "timestamp": datetime.now().isoformat(),
-            "integrations": {
-                "mistral": bool(MISTRAL_API_KEY),
-                "coral": bool(CORAL_API_KEY),
-                "ai_ml": bool(AI_ML_API_KEY)
-            }
-        }
-    except Exception as e:
-        print(f"Error in chat message handler: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
+
+@app.post("/api/chat/context")
+async def chat_context(req: ContextUpdateRequest):
+    success = update_session_context(req.session_id, req.context_updates)
+    return {"success": success}
+
+
+@app.post("/api/analyze-symptoms")
+async def analyze_symptoms(req: AnalyzeSymptomsRequest):
+    """
+    Analyze symptoms using AI with fallback.
+    """
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a maternal health assistant. Provide safe analysis of symptoms.",
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Patient age: {req.patient_age}\n"
+                f"History: {req.patient_history}\n"
+                f"Symptoms: {req.symptoms}\n"
+                "Please analyze and classify the risk as LOW, MEDIUM, or HIGH. "
+                "Provide a short explanation and advice."
+            ),
+        },
+    ]
+
+    reply = call_ai(messages)
+    return {"analysis": reply}
+
 
 # -------------------------------
-# 📌 Run app
+# Run App (local only)
 # -------------------------------
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)

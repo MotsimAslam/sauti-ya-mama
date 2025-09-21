@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import os
 import requests
 from dotenv import load_dotenv
-from services.google_maps import get_google_maps_service  # ✅ hospital lookup
+from services.google_maps import google_maps_service  # ✅ integrate hospital lookup
 
 # -------------------------------
 # Load API Keys
@@ -32,7 +32,7 @@ def call_mistral(messages: list) -> str:
     url = "https://api.mistral.ai/v1/chat/completions"
     headers = {"Authorization": f"Bearer {MISTRAL_API_KEY}"}
     payload = {
-        "model": "mistral-medium",  # change model if needed
+        "model": "mistral-medium",
         "messages": messages,
         "temperature": 0.7,
     }
@@ -64,7 +64,8 @@ def initialize_chat(patient_id: str) -> Dict[str, Any]:
                     "You are a maternal health assistant. "
                     "Provide empathetic, safe, and supportive guidance for pregnant women. "
                     "Always encourage professional medical care when symptoms may be serious. "
-                    "If asked about hospitals/clinics, the backend may provide a list—integrate it naturally in your response."
+                    "If asked about hospitals/clinics, use the hospital lookup service "
+                    "and integrate the results naturally into your response."
                 ),
             }
         ],
@@ -72,6 +73,7 @@ def initialize_chat(patient_id: str) -> Dict[str, Any]:
             "patient_history": [],
             "current_symptoms": [],
             "risk_level": "LOW",
+            "location": {"lat": None, "lng": None},
         },
     }
 
@@ -84,19 +86,22 @@ def initialize_chat(patient_id: str) -> Dict[str, Any]:
 
 
 # -------------------------------
+# Detect hospital/clinic query
+# -------------------------------
+def _is_hospital_query(message: str) -> bool:
+    keywords = ["hospital", "clinic", "nearby", "emergency", "care center"]
+    return any(word in message.lower() for word in keywords)
+
+
+# -------------------------------
 # Chat With Agent
 # -------------------------------
-def chat_with_agent(
-    session_id: str,
-    message: str,
-    latitude: Optional[float] = None,
-    longitude: Optional[float] = None,
-) -> Dict[str, Any]:
+def chat_with_agent(session_id: str, message: str) -> str:
     """
-    Process a chat message, optionally enrich with hospitals, and return Mistral-generated response.
+    Process a chat message and return Mistral-generated response.
     """
     if session_id not in chat_sessions:
-        return {"reply": "❌ Session not found. Please start a new chat."}
+        return "❌ Session not found. Please start a new chat."
 
     session = chat_sessions[session_id]
 
@@ -108,36 +113,42 @@ def chat_with_agent(
     }
     session["messages"].append(user_message)
 
-    # ✅ Detect if hospital/clinic request
-    hospitals = None
-    keywords = ["hospital", "clinic", "doctor", "near me", "nearby"]
-    if any(word in message.lower() for word in keywords):
-        if latitude and longitude:
-            google_maps_service = get_google_maps_service()
-            hospitals_data = google_maps_service.find_nearby_hospitals(latitude, longitude, radius=5000)
-            hospitals = hospitals_data.get("hospitals", [])
-            ai_summary = hospitals_data.get("ai_summary", "Nearby hospitals found, but no summary available.")
+    # Special case: Hospital lookup
+    if _is_hospital_query(message):
+        lat = session["context"]["location"].get("lat") or -1.2921  # default Nairobi
+        lng = session["context"]["location"].get("lng") or 36.8219
 
-            # Inject hospital summary into the conversation so Mistral can use it
-            session["messages"].append(
-                {"role": "system", "content": f"Nearby hospital info: {ai_summary}"}
+        hospitals = google_maps_service.find_nearby_hospitals(lat, lng)
+
+        if hospitals:
+            formatted_list = "\n".join(
+                [
+                    f"🏥 {h['name']} - {h['address']} ({h['distance_km']} km away, Rating: {h['rating']})"
+                    for h in hospitals[:5]
+                ]
+            )
+            ai_response = (
+                "Here are some nearby hospitals/clinics you can consider:\n\n"
+                f"{formatted_list}\n\n"
+                "👉 Please seek medical care promptly if your symptoms are severe."
             )
         else:
-            session["messages"].append(
-                {"role": "system", "content": "User requested hospitals but location was not provided."}
+            ai_response = (
+                "I tried to look up nearby hospitals but couldn’t fetch any results. "
+                "Please check your location settings or try again."
             )
 
-    # Prepare history for Mistral
-    history = [
-        {"role": msg["role"], "content": msg["content"]}
-        for msg in session["messages"]
-        if msg["role"] in ["system", "user", "assistant"]
-    ]
+    else:
+        # Normal flow: Ask Mistral
+        history = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in session["messages"]
+            if msg["role"] in ["system", "user", "assistant"]
+        ]
 
-    # Call Mistral API
-    ai_response = call_mistral(history)
+        ai_response = call_mistral(history)
 
-    # Save AI reply
+    # Add assistant reply
     ai_message = {
         "role": "assistant",
         "content": ai_response,
@@ -145,12 +156,7 @@ def chat_with_agent(
     }
     session["messages"].append(ai_message)
 
-    return {
-        "reply": ai_response,
-        "session_id": session_id,
-        "hospitals": hospitals,
-        "timestamp": datetime.now().isoformat(),
-    }
+    return ai_response
 
 
 # -------------------------------
@@ -163,7 +169,7 @@ def get_session_history(session_id: str) -> Dict[str, Any]:
 
 
 # -------------------------------
-# Update Context
+# Update Context (e.g., patient location)
 # -------------------------------
 def update_session_context(session_id: str, context_updates: Dict[str, Any]) -> bool:
     if session_id not in chat_sessions:

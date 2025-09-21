@@ -1,16 +1,30 @@
 import os
-from supabase import create_client, Client
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Try to import Supabase, but make it optional
+try:
+    from supabase import create_client, Client
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    print("Supabase not available - running without database features")
+
 class SupabaseService:
     def __init__(self):
+        if not SUPABASE_AVAILABLE:
+            self.client = None
+            return
+            
         self.url = os.getenv('SUPABASE_URL')
         self.key = os.getenv('SUPABASE_SERVICE_KEY')
         self.client: Client = create_client(self.url, self.key)
     
     def save_chat_message(self, session_id: str, role: str, content: str, patient_id: str):
+        if not SUPABASE_AVAILABLE or not self.client:
+            print("Supabase not available - chat message not saved")
+            return None
         try:
             data = {
                 'session_id': session_id,
@@ -25,6 +39,9 @@ class SupabaseService:
             return None
     
     def get_chat_history(self, session_id: str):
+        if not SUPABASE_AVAILABLE or not self.client:
+            print("Supabase not available - returning empty chat history")
+            return []
         try:
             result = self.client.table('chat_messages')\
                 .select('*')\

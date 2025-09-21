@@ -1,12 +1,12 @@
 fastapi
 uvicorn
 python-multipart
-elevenlabs
+# elevenlabs  # Temporarily disabled due to import issues
 mistralai
 google-generativeai
 python-dotenv
 requests
 googlemaps
-supabase
+# supabase  # Optional - will work without it
 python-jose[cryptography]
 bcrypt

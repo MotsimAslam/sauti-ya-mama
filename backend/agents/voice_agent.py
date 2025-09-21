@@ -1,19 +1,15 @@
-from elevenlabs import generate, play, set_api_key
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-set_api_key(os.getenv("ELEVENLABS_API_KEY"))
 
 class VoiceAgent:
     def speak(self, text: str, language_code: str = "en") -> bytes:
         try:
-            audio = generate(
-                text=text,
-                voice="Bella",
-                model="eleven_multilingual_v2"
-            )
-            return audio
+            # For now, return None to avoid ElevenLabs dependency issues
+            # In production, you can implement ElevenLabs integration here
+            print(f"Voice generation requested: {text}")
+            return None
         except Exception as e:
             print(f"Error generating speech: {e}")
             return None

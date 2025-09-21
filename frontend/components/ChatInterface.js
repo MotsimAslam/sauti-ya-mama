@@ -58,7 +58,10 @@ export default function ChatInterface({ patientId }) {
         message: inputMessage
       });
 
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      console.log('Using backend URL:', backendUrl);
+      
+      const response = await axios.post(`${backendUrl}/api/chat/message`, {
         session_id: sessionId,
         patient_id: patientId || 'demo_user',
         message: inputMessage

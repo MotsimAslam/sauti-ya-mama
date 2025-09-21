@@ -1,7 +1,7 @@
 class Orchestrator:
     def __init__(self):
-        from .triage_agent import triage_symptoms
-        from .voice_agent import generate_health_alert
+        from agents.triage_agent import triage_symptoms
+        from agents.voice_agent import generate_health_alert
         self.triage = triage_symptoms
         self.generate_alert = generate_health_alert
 

@@ -20,7 +20,11 @@ app = FastAPI(
 # ✅ CORS settings for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://sauti-ya-mama-peu3.vercel.app"],  # Add localhost for development
+    allow_origins=[
+        "http://localhost:3000", 
+        "https://sauti-ya-mama-peu3.vercel.app",
+        "https://*.vercel.app"  # Allow all Vercel preview deployments
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

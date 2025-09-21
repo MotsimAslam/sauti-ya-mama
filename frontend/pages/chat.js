@@ -25,18 +25,26 @@ export default function ChatPage() {
         // latitude and longitude can be added here if available
       };
 
+      console.log('Sending chat request:', body);
+      console.log('Backend URL:', process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000');
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
       if (!response.ok) {
         const text = await response.text();
+        console.error('API Error:', text);
         throw new Error(`HTTP ${response.status}: ${text}`);
       }
 
       const data = await response.json();
+      console.log('Response data:', data);
 
       // Update session ID
       if (!sessionId && data.session_id) setSessionId(data.session_id);
@@ -59,7 +67,7 @@ export default function ChatPage() {
       console.error("Chat API error:", error);
       setMessages((prev) => [
         ...prev,
-        { sender: "ai", text: "⚠️ Failed to reach AI server. Please try again." },
+        { sender: "ai", text: `⚠️ Error: ${error.message}. Please check your connection and try again.` },
       ]);
     } finally {
       setLoading(false);

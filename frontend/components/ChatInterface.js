@@ -51,11 +51,20 @@ export default function ChatInterface({ patientId }) {
     setLoading(true);
 
     try {
+      console.log('Sending message to:', `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`);
+      console.log('Request data:', {
+        session_id: sessionId,
+        patient_id: patientId || 'demo_user',
+        message: inputMessage
+      });
+
       const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/chat/message`, {
         session_id: sessionId,
         patient_id: patientId || 'demo_user',
         message: inputMessage
       });
+
+      console.log('Response:', response.data);
 
       if (response.data.reply) {
         setMessages(prev => [...prev, {
@@ -63,12 +72,19 @@ export default function ChatInterface({ patientId }) {
           content: response.data.reply,
           timestamp: response.data.timestamp || new Date().toISOString()
         }]);
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'No response received from the server.',
+          timestamp: new Date().toISOString()
+        }]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage = error.response?.data?.detail || error.message || 'Unknown error occurred';
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: `Sorry, I encountered an error: ${errorMessage}. Please try again.`,
         timestamp: new Date().toISOString()
       }]);
     } finally {

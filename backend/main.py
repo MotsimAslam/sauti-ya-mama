@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.agents.orchestrator_agent import Orchestrator
-from backend.services.google_maps import google_maps_service
-from backend.agents.chat_agent import initialize_chat, chat_with_agent
+from agents.orchestrator_agent import Orchestrator
+from services.google_maps import google_maps_service
+from agents.chat_agent import initialize_chat, chat_with_agent
 from typing import Optional
 import os
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -153,10 +154,13 @@ def handle_chat_message(request: ChatRequest):
 
         return {
             "reply": ai_reply,
-            "hospitals": hospitals
+            "session_id": request.session_id,
+            "hospitals": hospitals,
+            "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error in chat message handler: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
 
 # -------------------------------

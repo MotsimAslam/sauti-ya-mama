@@ -8,20 +8,31 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import base64
 
+# -------------------------------
+# Load Environment Variables
+# -------------------------------
 load_dotenv()
 
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+CORAL_API_KEY = os.getenv("CORAL_API_KEY")
+AI_ML_API_KEY = os.getenv("AI_ML_API_KEY")
+
+# -------------------------------
+# FastAPI app config
+# -------------------------------
 app = FastAPI(
     title="Sauti Ya Mama API",
-    description="Backend for Maternal Health Agent",
-    version="1.0.0"
+    description="Backend for Maternal Health Agent powered by Mistral + Coral + AI/ML APIs",
+    version="2.0.0"
 )
 
 # ✅ CORS settings for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000", 
+        "http://localhost:3000",
         "https://sauti-ya-mama-peu3.vercel.app",
         "https://*.vercel.app"  # Allow all Vercel preview deployments
     ],
@@ -29,7 +40,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # -------------------------------
 # 📌 Models
@@ -50,14 +60,12 @@ class ChatRequest(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
-
 # -------------------------------
 # 📌 Root endpoint
 # -------------------------------
 @app.get("/")
 def read_root():
-    return {"message": "Sauti Ya Mama API is running!"}
-
+    return {"message": "Sauti Ya Mama API is running with Mistral + Coral + AI/ML integrations!"}
 
 # -------------------------------
 # 📌 Symptom analysis
@@ -69,14 +77,12 @@ def analyze_symptoms(request: SymptomRequest):
         result = orchestrator.handle_user_input(request.patient_id, request.symptom_text)
 
         # Encode audio alert if present
-        if 'audio_alert' in result:
-            import base64
-            result['audio_alert'] = base64.b64encode(result['audio_alert']).decode('utf-8')
+        if "audio_alert" in result:
+            result["audio_alert"] = base64.b64encode(result["audio_alert"]).decode("utf-8")
 
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # -------------------------------
 # 📌 Patient history
@@ -85,7 +91,6 @@ def analyze_symptoms(request: SymptomRequest):
 def get_patient(patient_id: str):
     from agents.triage_agent import get_patient_history
     return get_patient_history(patient_id)
-
 
 # -------------------------------
 # 📌 Nearby clinics (direct call)
@@ -102,7 +107,6 @@ def get_nearby_clinics(request: ClinicRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching clinics: {str(e)}")
 
-
 # -------------------------------
 # 📌 Geocoding
 # -------------------------------
@@ -111,16 +115,15 @@ def geocode_address(address: str):
     try:
         geocode_result = google_maps_service.client.geocode(address)
         if geocode_result:
-            location = geocode_result[0]['geometry']['location']
+            location = geocode_result[0]["geometry"]["location"]
             return {
-                "latitude": location['lat'],
-                "longitude": location['lng'],
-                "formatted_address": geocode_result[0]['formatted_address']
+                "latitude": location["lat"],
+                "longitude": location["lng"],
+                "formatted_address": geocode_result[0]["formatted_address"]
             }
         return {"error": "Address not found"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # -------------------------------
 # 📌 Chat APIs
@@ -128,11 +131,10 @@ def geocode_address(address: str):
 @app.post("/api/chat/initialize")
 def init_chat_session(request: dict):
     try:
-        patient_id = request.get('patient_id', 'demo_user')
+        patient_id = request.get("patient_id", "demo_user")
         return initialize_chat(patient_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/api/chat/message")
 def handle_chat_message(request: ChatRequest):
@@ -140,9 +142,9 @@ def handle_chat_message(request: ChatRequest):
         # Create session if not provided
         if not request.session_id:
             session_info = initialize_chat(request.patient_id)
-            request.session_id = session_info['session_id']
+            request.session_id = session_info["session_id"]
 
-        # Call chat agent
+        # Call chat agent (Mistral)
         ai_reply = chat_with_agent(request.session_id, request.message)
 
         # ✅ Check if user asks for hospitals/clinics
@@ -160,12 +162,16 @@ def handle_chat_message(request: ChatRequest):
             "reply": ai_reply,
             "session_id": request.session_id,
             "hospitals": hospitals,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "integrations": {
+                "mistral": bool(MISTRAL_API_KEY),
+                "coral": bool(CORAL_API_KEY),
+                "ai_ml": bool(AI_ML_API_KEY)
+            }
         }
     except Exception as e:
         print(f"Error in chat message handler: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
-
 
 # -------------------------------
 # 📌 Run app

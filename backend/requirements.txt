@@ -7,6 +7,6 @@ google-generativeai
 python-dotenv
 requests
 googlemaps
-# supabase  # Optional - will work without it
+supabase  # Optional - will work without it
 python-jose[cryptography]
 bcrypt

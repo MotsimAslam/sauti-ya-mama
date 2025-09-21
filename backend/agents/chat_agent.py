@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 import os
 import requests
 from dotenv import load_dotenv
-from services.google_maps import google_maps_service  # ✅ hospital lookup
+from services.google_maps import get_google_maps_service  # ✅ hospital lookup
 
 # -------------------------------
 # Load API Keys
@@ -113,6 +113,7 @@ def chat_with_agent(
     keywords = ["hospital", "clinic", "doctor", "near me", "nearby"]
     if any(word in message.lower() for word in keywords):
         if latitude and longitude:
+            google_maps_service = get_google_maps_service()
             hospitals_data = google_maps_service.find_nearby_hospitals(latitude, longitude, radius=5000)
             hospitals = hospitals_data.get("hospitals", [])
             ai_summary = hospitals_data.get("ai_summary", "Nearby hospitals found, but no summary available.")

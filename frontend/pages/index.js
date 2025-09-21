@@ -1,4 +1,3 @@
-// pages/index.js
 import Head from "next/head";
 import Link from "next/link";
 import { Heart, Menu, X } from "lucide-react";
@@ -25,9 +24,10 @@ export default function Home() {
           {/* Desktop Menu */}
           <nav className="hidden md:flex space-x-8 text-gray-700 font-medium">
             <a href="#home" className="hover:text-pink-600">Home</a>
-            <a href="#about" className="hover:text-pink-600">About Us</a>
+            <a href="#about" className="hover:text-pink-600">About</a>
+            <a href="#solution" className="hover:text-pink-600">Solution</a>
+            <a href="#impact" className="hover:text-pink-600">Impact</a>
             <a href="#how" className="hover:text-pink-600">How It Works</a>
-            <a href="#clinics" className="hover:text-pink-600">Clinics</a>
             <a href="#contact" className="hover:text-pink-600">Contact Us</a>
           </nav>
 
@@ -44,54 +44,72 @@ export default function Home() {
         {isOpen && (
           <div className="md:hidden bg-white shadow px-6 py-4 space-y-4">
             <a href="#home" className="block text-gray-700 hover:text-pink-600">Home</a>
-            <a href="#about" className="block text-gray-700 hover:text-pink-600">About Us</a>
+            <a href="#about" className="block text-gray-700 hover:text-pink-600">About</a>
+            <a href="#solution" className="block text-gray-700 hover:text-pink-600">Solution</a>
+            <a href="#impact" className="block text-gray-700 hover:text-pink-600">Impact</a>
             <a href="#how" className="block text-gray-700 hover:text-pink-600">How It Works</a>
-            <a href="#clinics" className="block text-gray-700 hover:text-pink-600">Clinics</a>
             <a href="#contact" className="block text-gray-700 hover:text-pink-600">Contact Us</a>
           </div>
         )}
       </header>
 
       {/* Hero Section */}
-      <section id="home" className="bg-gradient-to-r from-pink-100 to-pink-50 py-24 pt-32">
+      <section id="home" className="bg-gradient-to-r from-pink-100 to-pink-50 py-28 pt-40">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900">
             Sauti Ya Mama
           </h1>
           <p className="mt-6 text-lg text-gray-700 max-w-2xl mx-auto">
-            AI-powered maternal health companion designed to save mothers’ lives
-            with voice-based guidance, real-time clinic navigation, and instant
-            health triage.
+            An AI-powered maternal health companion tackling real-life problems faced by women in developing countries.
+            Helping expectant mothers get trusted health advice and find nearby clinics instantly.
           </p>
           <div className="mt-8 flex justify-center space-x-4">
             <Link
-              href="/auth"
+              href="/chat"
               className="px-6 py-3 rounded-xl bg-pink-600 text-white font-semibold shadow hover:bg-pink-700"
             >
-              Get Started
+              Chat with Agent
             </Link>
-            <a
-              href="#about"
+            <Link
+              href="/clinics"
               className="px-6 py-3 rounded-xl border border-pink-600 text-pink-600 font-semibold hover:bg-pink-50"
             >
-              Learn More
-            </a>
+              Find Clinic
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900">About Us</h2>
-          <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
-            We are tackling maternal health challenges using AI, voice technology, 
-            and clinic navigation to ensure no mother dies from preventable causes.
-          </p>
-        </div>
+      {/* Real Life Problem */}
+      <section id="about" className="py-20 bg-white text-center">
+        <h2 className="text-3xl font-bold text-gray-900">The Problem</h2>
+        <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
+          Millions of women in developing countries lack access to affordable hospitals,
+          timely medical guidance, and awareness of nearby clinics. Maternal deaths remain
+          preventable but widespread.
+        </p>
       </section>
 
-      {/* Features / How It Works */}
+      {/* Our Solution */}
+      <section id="solution" className="py-20 bg-gray-50 text-center">
+        <h2 className="text-3xl font-bold text-gray-900">Our Solution</h2>
+        <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
+          Sauti Ya Mama uses AI and location technology to provide immediate health advice
+          and connect women with nearby clinics and hospitals—saving time, money, and lives.
+        </p>
+      </section>
+
+      {/* Impact */}
+      <section id="impact" className="py-20 bg-white text-center">
+        <h2 className="text-3xl font-bold text-gray-900">Impact</h2>
+        <p className="mt-4 text-gray-600 max-w-3xl mx-auto">
+          Every year, over <span className="font-semibold text-pink-600">295,000 women</span> die due to
+          pregnancy-related complications. Our solution reduces preventable maternal deaths
+          by making healthcare accessible and actionable.
+        </p>
+      </section>
+
+      {/* How It Works */}
       <section id="how" className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center text-gray-900">
@@ -100,36 +118,22 @@ export default function Home() {
           <div className="mt-12 grid gap-8 md:grid-cols-3">
             <div className="text-center p-6 border rounded-xl shadow-sm">
               <div className="text-pink-600 text-2xl font-bold">Step 1</div>
-              <p className="mt-4 text-gray-700">Mother speaks her symptoms via voice.</p>
+              <p className="mt-4 text-gray-700">Mother shares her symptoms through chat or voice.</p>
             </div>
             <div className="text-center p-6 border rounded-xl shadow-sm">
               <div className="text-pink-600 text-2xl font-bold">Step 2</div>
-              <p className="mt-4 text-gray-700">AI analyzes & gives trusted recommendations.</p>
+              <p className="mt-4 text-gray-700">AI analyzes and provides trusted, empathetic recommendations.</p>
             </div>
             <div className="text-center p-6 border rounded-xl shadow-sm">
               <div className="text-pink-600 text-2xl font-bold">Step 3</div>
-              <p className="mt-4 text-gray-700">Navigation to nearest clinic if needed.</p>
+              <p className="mt-4 text-gray-700">If needed, navigation to the nearest clinic is provided instantly.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Clinics Section */}
-      <section id="clinics" className="py-20 bg-white text-center">
-        <h2 className="text-3xl font-bold text-gray-900">Find Clinics</h2>
-        <p className="mt-4 text-gray-600">
-          Use our real-time location service to find nearby clinics and hospitals.
-        </p>
-        <Link
-          href="/clinics"
-          className="mt-6 inline-block px-6 py-3 bg-pink-600 text-white rounded-xl shadow hover:bg-pink-700"
-        >
-          Search Clinics
-        </Link>
-      </section>
-
       {/* Contact Section */}
-      <section id="contact" className="py-20 bg-gray-50 text-center">
+      <section id="contact" className="py-20 bg-white text-center">
         <h2 className="text-3xl font-bold text-gray-900">Contact Us</h2>
         <p className="mt-4 text-gray-600">
           For partnerships, pilots, or questions, reach out to us at:
@@ -137,13 +141,10 @@ export default function Home() {
         <p className="mt-2 text-pink-600 font-semibold">info@sautiyamama.org</p>
       </section>
 
-      {/* Coming Soon */}
-      <section className="bg-gradient-to-r from-pink-600 to-pink-500 py-20 text-white text-center">
-        <h2 className="text-3xl font-bold">Appointment Booking Coming Soon</h2>
-        <p className="mt-4 max-w-2xl mx-auto">
-          Soon you’ll be able to book hospital & clinic appointments directly from Sauti Ya Mama.
-        </p>
-      </section>
+      {/* Footer */}
+      <footer className="bg-gradient-to-r from-pink-600 to-pink-500 py-6 text-white text-center">
+        <p>&copy; {new Date().getFullYear()} Sauti Ya Mama. All rights reserved.</p>
+      </footer>
     </>
   );
 }

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, User, Bot } from "lucide-react";
 import axios from "axios";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://sauti-ya-mama.onrender.com";
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 export default function ChatInterface({ patientId = "anonymous" }) {
   const [messages, setMessages] = useState([]);
@@ -93,6 +93,12 @@ export default function ChatInterface({ patientId = "anonymous" }) {
     setLoading(true);
 
     try {
+      console.log('Sending message to:', API_BASE);
+      console.log('Environment variables:', {
+        NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL,
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL
+      });
+      
       const payload = {
         session_id: sessionId,
         patient_id: patientId,
@@ -102,6 +108,7 @@ export default function ChatInterface({ patientId = "anonymous" }) {
         longitude: location?.longitude ?? null,
       };
 
+      console.log('Sending payload:', payload);
       const res = await axios.post(`${API_BASE}/api/chat/message`, payload, {
         headers: { "Content-Type": "application/json" },
       });

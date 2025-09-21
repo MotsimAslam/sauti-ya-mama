@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agents.orchestrator_agent import Orchestrator
-from services.google_maps import google_maps_service
+from services.google_maps import get_google_maps_service
 from agents.chat_agent import initialize_chat, chat_with_agent
 from typing import Optional
 import os
@@ -98,6 +98,7 @@ def get_patient(patient_id: str):
 @app.post("/api/nearby-clinics")
 def get_nearby_clinics(request: ClinicRequest):
     try:
+        google_maps_service = get_google_maps_service()
         hospitals = google_maps_service.find_nearby_hospitals(
             request.latitude,
             request.longitude,
@@ -113,6 +114,7 @@ def get_nearby_clinics(request: ClinicRequest):
 @app.get("/api/geocode/{address}")
 def geocode_address(address: str):
     try:
+        google_maps_service = get_google_maps_service()
         geocode_result = google_maps_service.client.geocode(address)
         if geocode_result:
             location = geocode_result[0]["geometry"]["location"]
@@ -152,6 +154,7 @@ def handle_chat_message(request: ChatRequest):
         hospitals = None
         if any(word in request.message.lower() for word in keywords):
             if request.latitude and request.longitude:
+                google_maps_service = get_google_maps_service()
                 hospitals = google_maps_service.find_nearby_hospitals(
                     request.latitude,
                     request.longitude,

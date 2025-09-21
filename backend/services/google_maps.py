@@ -99,5 +99,12 @@ class GoogleMapsService:
             print(f"Error generating AI summary: {e}")
             return "Nearby hospitals found, but I couldn’t generate a summary."
 
-# ✅ Export singleton
-google_maps_service = GoogleMapsService()
+# ✅ Export singleton (will be created when needed)
+google_maps_service = None
+
+def get_google_maps_service():
+    """Get or create Google Maps service instance"""
+    global google_maps_service
+    if google_maps_service is None:
+        google_maps_service = GoogleMapsService()
+    return google_maps_service
